@@ -96,19 +96,19 @@ curl -H 'X-API-Key: 3R5g4sc8mdFN2Ztzx4giq2Wx' \
 - 显示识别结果（物体、场景、文字等）
 
 **开发步骤**:
-1. [ ] 修改 `Recognize.tsx` 组件
+1. [x] 修改 `Recognize.tsx` 组件
    - 移除 `Tesseract.js` 依赖
    - 添加图片转 base64 功能（带格式前缀）
    - 调用后端 `/api/recognize` 接口
-2. [ ] 实现前后端数据交互
+2. [x] 实现前后端数据交互
    - 前端发送 base64 图片（格式：`data:image/png;base64,xxx`）
-   - 后端调用火山引擎 API
+   - 后端调用火山引擎 API（model: `ep-20251002143225-lp445`）
    - 返回 AI 识别的文字描述
-3. [ ] 优化 UI 展示
+3. [x] 优化 UI 展示
    - 左侧显示原图
    - 右侧显示识别结果
-   - 支持复制识别文本
-4. [ ] 测试完整流程
+   - 支持复制识别文本（优化的提示方式）
+4. [x] 测试完整流程并修复 API 权限问题
 5. [ ] Git commit + push
 
 **API 请求格式**:
@@ -117,12 +117,14 @@ curl --location 'https://ark.cn-beijing.volces.com/api/v3/chat/completions' \
 --header 'Authorization: Bearer $ARK_API_KEY' \
 --header 'Content-Type: application/json' \
 --data '{
-  "model": "ep-20250921140145-v9tg9",
+  "model": "ep-20251002143225-lp445",
   "messages": [{
     "role": "user",
     "content": [
-      {"type": "text", "text": "识别图片"},
-      {"type": "image_url", "image_url": {"url": "data:image/png;base64,{base64}"}}
+      {"type": "image_url", "image_url": {"url": "data:image/png;base64,{base64}"}},
+      {"type": "text", "text": "识别图片"}
+    ]
+  }]
     ]
   }]
 }'
@@ -165,14 +167,14 @@ curl -X POST https://ark.cn-beijing.volces.com/api/v3/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ARK_API_KEY" \
   -d '{
-    "model": "ep-20250922151247-nzclw",
-    "prompt": "用户输入的提示词",
+    "model": "ep-20251002143355-9kspk",
+    "prompt": "星际穿越，黑洞，黑洞里冲出一辆快支离破碎的复古列车，抢视觉冲击力，电影大片，末日既视感，动感，对比色，oc渲染，光线追踪，动态模糊，景深，超现实主义，深蓝，画面通过细腻的丰富的色彩层次塑造主体与场景，质感真实，暗黑风背景的光影效果营造出氛围，整体兼具艺术幻想感，夸张的广角透视效果，耀光，反射，极致的光影，强引力，吞噬",
     "sequential_image_generation": "disabled",
     "response_format": "url",
     "size": "2K",
     "stream": false,
     "watermark": true
-  }'
+}'
 ```
 
 **文件路径**: `src/pages/AIGenerate.tsx`

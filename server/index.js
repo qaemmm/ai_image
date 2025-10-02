@@ -70,20 +70,20 @@ app.post('/api/recognize', async (req, res) => {
     const response = await axios.post(
       'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
       {
-        model: 'ep-20250921140145-v9tg9',
+        model: 'ep-20251002143225-lp445',
         messages: [
           {
             role: 'user',
             content: [
               {
-                type: 'text',
-                text: '请详细识别并描述这张图片的内容，包括：1. 图片中的主要物体或人物 2. 场景和背景 3. 颜色和氛围 4. 任何可见的文字'
-              },
-              {
                 type: 'image_url',
                 image_url: {
                   url: imageBase64
                 }
+              },
+              {
+                type: 'text',
+                text: '请详细识别并描述这张图片的内容，包括：1. 图片中的主要物体或人物 2. 场景和背景 3. 颜色和氛围 4. 任何可见的文字'
               }
             ]
           }
