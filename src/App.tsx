@@ -7,6 +7,7 @@ import Compress from './pages/Compress';
 import RemoveBg from './pages/RemoveBg';
 import Recognize from './pages/Recognize';
 import AIGenerate from './pages/AIGenerate';
+import Pricing from './pages/Pricing';
 
 function App() {
   return (
@@ -54,6 +55,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/pricing" element={<Pricing />} />
         </Routes>
       </AuthProvider>
     </Router>
