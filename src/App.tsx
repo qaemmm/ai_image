@@ -8,6 +8,9 @@ import RemoveBg from './pages/RemoveBg';
 import Recognize from './pages/Recognize';
 import AIGenerate from './pages/AIGenerate';
 import Pricing from './pages/Pricing';
+import Dashboard from './pages/Dashboard';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancel from './pages/PaymentCancel';
 
 function App() {
   return (
@@ -56,6 +59,23 @@ function App() {
             }
           />
           <Route path="/pricing" element={<Pricing />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/success"
+            element={
+              <ProtectedRoute>
+                <PaymentSuccess />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/payment/cancel" element={<PaymentCancel />} />
         </Routes>
       </AuthProvider>
     </Router>

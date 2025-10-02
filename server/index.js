@@ -4,11 +4,18 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import FormData from 'form-data';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config({ path: '../.env.local' });
 
 const app = express();
 const PORT = 3001;
+
+// Initialize Supabase client with service role key
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // Middleware
 app.use(cors());
@@ -223,27 +230,75 @@ app.post('/api/webhooks/creem', express.raw({ type: 'application/json' }), async
     switch (event.type) {
       case 'checkout.session.completed':
         console.log('Checkout completed:', event.data);
-        // TODO: Update user subscription in database
+        // Extract user and plan info from metadata
+        const checkoutData = event.data;
+        if (checkoutData.metadata) {
+          const { user_id, plan_id, interval } = checkoutData.metadata;
+          // Get credit amount based on plan
+          const creditAmounts = { basic: 150, pro: 400, max: 1000 };
+          const credits = creditAmounts[plan_id] || 0;
+
+          // Add credits
+          await supabase.from('user_credits').upsert({
+            user_id,
+            credits: supabase.raw(`credits + ${credits}`),
+            total_earned: supabase.raw(`total_earned + ${credits}`)
+          });
+
+          // Record transaction
+          await supabase.from('credit_transactions').insert({
+            user_id,
+            amount: credits,
+            type: 'purchase',
+            description: `Purchased ${plan_id} plan (${interval}ly)`
+          });
+        }
         break;
 
       case 'payment.succeeded':
         console.log('Payment succeeded:', event.data);
-        // TODO: Add credits to user account
+        // Additional handling if needed
         break;
 
       case 'subscription.created':
         console.log('Subscription created:', event.data);
-        // TODO: Create subscription record
+        // Create subscription record
+        const subData = event.data;
+        if (subData.metadata) {
+          await supabase.from('user_subscriptions').insert({
+            user_id: subData.metadata.user_id,
+            subscription_id: subData.id,
+            product_id: subData.product_id,
+            plan_name: subData.metadata.plan_id,
+            interval: subData.metadata.interval,
+            status: 'active',
+            current_period_start: new Date(subData.current_period_start * 1000),
+            current_period_end: new Date(subData.current_period_end * 1000)
+          });
+        }
         break;
 
       case 'subscription.canceled':
         console.log('Subscription canceled:', event.data);
-        // TODO: Update subscription status
+        // Update subscription status
+        await supabase
+          .from('user_subscriptions')
+          .update({ status: 'canceled' })
+          .eq('subscription_id', event.data.id);
         break;
 
       case 'subscription.updated':
         console.log('Subscription updated:', event.data);
-        // TODO: Update subscription details
+        // Update subscription details
+        const updatedSub = event.data;
+        await supabase
+          .from('user_subscriptions')
+          .update({
+            status: updatedSub.status,
+            current_period_start: new Date(updatedSub.current_period_start * 1000),
+            current_period_end: new Date(updatedSub.current_period_end * 1000)
+          })
+          .eq('subscription_id', updatedSub.id);
         break;
 
       default:
@@ -296,6 +351,116 @@ app.get('/api/products', async (req, res) => {
   } catch (error) {
     console.error('Products Error:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// 7. Check and Deduct Credits - Verify user has enough credits and deduct them
+app.post('/api/credits/deduct', async (req, res) => {
+  try {
+    const { userId, amount, type, description } = req.body;
+
+    if (!userId || !amount || !type) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Get user's current credits
+    const { data: creditData, error: creditError } = await supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (creditError || !creditData) {
+      return res.status(404).json({ error: 'User credits not found' });
+    }
+
+    // Check if user has enough credits
+    if (creditData.credits < amount) {
+      return res.status(403).json({
+        error: 'Insufficient credits',
+        available: creditData.credits,
+        required: amount
+      });
+    }
+
+    // Deduct credits
+    const { error: updateError } = await supabase
+      .from('user_credits')
+      .update({
+        credits: creditData.credits - amount,
+        total_spent: supabase.raw(`total_spent + ${amount}`)
+      })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Record transaction
+    await supabase.from('credit_transactions').insert({
+      user_id: userId,
+      amount: -amount,
+      type,
+      description: description || `Used ${amount} credits for ${type}`
+    });
+
+    res.json({
+      success: true,
+      remaining: creditData.credits - amount
+    });
+  } catch (error) {
+    console.error('Credit Deduction Error:', error);
+    res.status(500).json({ error: 'Failed to deduct credits' });
+  }
+});
+
+// 8. Add Credits - Add credits to user account (used by webhooks)
+app.post('/api/credits/add', async (req, res) => {
+  try {
+    const { userId, amount, type, description } = req.body;
+
+    if (!userId || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check if user has a credit record
+    const { data: existingCredits } = await supabase
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (existingCredits) {
+      // Update existing record
+      await supabase
+        .from('user_credits')
+        .update({
+          credits: existingCredits.credits + amount,
+          total_earned: existingCredits.total_earned + amount
+        })
+        .eq('user_id', userId);
+    } else {
+      // Create new record
+      await supabase.from('user_credits').insert({
+        user_id: userId,
+        credits: amount,
+        total_earned: amount,
+        total_spent: 0
+      });
+    }
+
+    // Record transaction
+    await supabase.from('credit_transactions').insert({
+      user_id: userId,
+      amount: amount,
+      type: type || 'purchase',
+      description: description || `Added ${amount} credits`
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Add Credits Error:', error);
+    res.status(500).json({ error: 'Failed to add credits' });
   }
 });
 

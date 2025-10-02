@@ -9,16 +9,42 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const handlePurchase = (planId: string) => {
+  const handlePurchase = async (planId: string) => {
     if (!user) {
       // Redirect to login if not authenticated
       navigate('/login', { state: { from: '/pricing', planId } });
       return;
     }
 
-    // TODO: Implement checkout flow with Creem
-    console.log(`Purchasing plan: ${planId}, interval: ${isYearly ? 'year' : 'month'}`);
-    alert('Payment integration coming soon!');
+    try {
+      const interval = isYearly ? 'year' : 'month';
+
+      // Call backend to create checkout session
+      const response = await fetch('http://localhost:3001/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planId,
+          interval,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.checkoutUrl) {
+        // Redirect to Creem checkout page
+        window.location.href = data.checkoutUrl;
+      } else {
+        alert('Failed to create checkout session. Please try again.');
+        console.error('Checkout error:', data);
+      }
+    } catch (error) {
+      console.error('Purchase error:', error);
+      alert('An error occurred. Please try again.');
+    }
   };
 
   const toggleFaq = (index: number) => {
