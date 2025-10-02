@@ -1,0 +1,108 @@
+import { useNavigate } from 'react-router-dom';
+
+const Home = () => {
+  const navigate = useNavigate();
+
+  const features = [
+    {
+      id: 'compress',
+      title: '图片压缩',
+      description: '智能压缩图片文件大小，保持高质量的同时减少存储空间',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-500',
+      path: '/compress'
+    },
+    {
+      id: 'remove-bg',
+      title: '抠图去背景',
+      description: 'AI智能识别主体，一键去除图片背景，制作透明背景图片',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+        </svg>
+      ),
+      bgColor: 'bg-green-100',
+      iconColor: 'text-green-500',
+      path: '/remove-bg'
+    },
+    {
+      id: 'recognize',
+      title: '图片识别',
+      description: 'AI智能分析图片内容，识别物体、文字、场景等信息',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      ),
+      bgColor: 'bg-purple-100',
+      iconColor: 'text-purple-500',
+      path: '/recognize'
+    },
+    {
+      id: 'ai-generate',
+      title: 'AI 生图',
+      description: '通过文字描述生成高质量图片，释放创意无限可能',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      ),
+      bgColor: 'bg-orange-100',
+      iconColor: 'text-orange-500',
+      path: '/ai-generate'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-gray-800 mb-4">
+            图片处理工具
+          </h1>
+          <p className="text-lg text-gray-500">
+            专业的图片处理平台，提供图片压缩、抠图去背景、图片识别和AI生图等功能
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+          {features.map((feature) => {
+            return (
+              <div
+                key={feature.id}
+                onClick={() => navigate(feature.path)}
+                className="group cursor-pointer bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className={`${feature.bgColor} ${feature.iconColor} w-20 h-20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-800 mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-500 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-sm text-gray-400">
+            选择一个功能开始处理您的图片
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
