@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const features = [
     {
@@ -62,6 +64,37 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
       <div className="container mx-auto px-4 py-16">
+        {/* 用户信息栏 */}
+        <div className="max-w-5xl mx-auto mb-8">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {user?.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="Avatar"
+                  className="w-10 h-10 rounded-full"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+              <div>
+                <p className="font-medium text-gray-800">
+                  {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email}
+                </p>
+                <p className="text-sm text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={signOut}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            >
+              登出
+            </button>
+          </div>
+        </div>
+
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
             图片处理工具
