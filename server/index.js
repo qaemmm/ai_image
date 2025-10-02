@@ -122,7 +122,7 @@ app.post('/api/generate-image', async (req, res) => {
     const response = await axios.post(
       'https://ark.cn-beijing.volces.com/api/v3/images/generations',
       {
-        model: 'ep-20250922151247-nzclw',
+        model: 'ep-20251002143355-9kspk',
         prompt: prompt,
         sequential_image_generation: 'disabled',
         response_format: 'url',
