@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { removeBackground } from '@imgly/background-removal';
 
 const RemoveBg = () => {
   const navigate = useNavigate();
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -15,22 +15,35 @@ const RemoveBg = () => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      setOriginalImage(e.target?.result as string);
+      const base64 = e.target?.result as string;
+      setOriginalImage(base64);
+      processImage(base64);
     };
     reader.readAsDataURL(file);
-
-    await processImage(file);
   };
 
-  const processImage = async (file: File) => {
+  const processImage = async (imageBase64: string) => {
     setLoading(true);
+    setError(null);
     try {
-      const blob = await removeBackground(file);
-      const url = URL.createObjectURL(blob);
-      setProcessedImage(url);
+      const response = await fetch('http://localhost:3001/api/remove-bg', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageBase64 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '抠图失败');
+      }
+
+      setProcessedImage(data.image);
     } catch (error) {
       console.error('抠图失败:', error);
-      alert('抠图失败，请重试');
+      setError(error instanceof Error ? error.message : '抠图失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -66,6 +79,13 @@ const RemoveBg = () => {
             className="hidden"
           />
 
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              <p className="font-semibold">错误</p>
+              <p>{error}</p>
+            </div>
+          )}
+
           {!originalImage ? (
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -87,7 +107,7 @@ const RemoveBg = () => {
                   <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-                      <p className="text-gray-600">AI 处理中...</p>
+                      <p className="text-gray-600">Remove.bg API 处理中...</p>
                     </div>
                   </div>
                 ) : processedImage ? (
@@ -115,6 +135,7 @@ const RemoveBg = () => {
               onClick={() => {
                 setOriginalImage(null);
                 setProcessedImage(null);
+                setError(null);
               }}
               className="mt-6 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
             >
