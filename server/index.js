@@ -6,8 +6,15 @@ import FormData from 'form-data';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { getProductId } from './creem-products.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-dotenv.config({ path: '../.env.local' });
+// 获取当前文件的目录
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 使用绝对路径加载 .env.local
+dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
 const app = express();
 const PORT = 3001;
@@ -163,7 +170,7 @@ app.post('/api/generate-image', async (req, res) => {
 // 4. Creem Checkout Session - Create checkout for subscription purchase
 app.post('/api/create-checkout', async (req, res) => {
   try {
-    const { planId, interval, userId } = req.body;
+    const { planId, interval, userId, userEmail } = req.body;
 
     if (!planId || !interval) {
       return res.status(400).json({ error: 'Missing planId or interval' });
@@ -172,12 +179,12 @@ app.post('/api/create-checkout', async (req, res) => {
     // Get real product ID from configuration
     const productId = getProductId(planId, interval);
 
-    // Build the request payload
+    // Build the request payload according to Creem API documentation
+    // Reference: https://docs.creem.io/api-reference/endpoint/create-checkout
     const checkoutPayload = {
       product_id: productId,
+      units: 1, // Required field: number of units for the product
       success_url: `${req.headers.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/pricing`,
-      // Note: Removed 'mode' field as it may not be supported by Creem API
       metadata: {
         user_id: userId,
         plan_id: planId,
@@ -185,15 +192,22 @@ app.post('/api/create-checkout', async (req, res) => {
       }
     };
 
+    // Add customer info if email is provided (optional but recommended)
+    if (userEmail) {
+      checkoutPayload.customer = {
+        email: userEmail
+      };
+    }
+
     console.log('=== Creem Checkout Request ===');
     console.log(`Plan: ${planId} ${interval}`);
     console.log(`Product ID: ${productId}`);
     console.log('Payload:', JSON.stringify(checkoutPayload, null, 2));
     console.log('API Key present:', !!process.env.CREEM_API_KEY);
-    console.log('API Key prefix:', process.env.CREEM_API_KEY?.substring(0, 10) + '...');
+    console.log('API Key full:', process.env.CREEM_API_KEY);
 
     const response = await axios.post(
-      'https://api.creem.io/v1/checkout/sessions',
+      'https://api.creem.io/v1/checkouts', // Fixed: correct endpoint is /v1/checkouts (not /v1/checkout/sessions)
       checkoutPayload,
       {
         headers: {
@@ -205,11 +219,11 @@ app.post('/api/create-checkout', async (req, res) => {
 
     console.log('✅ Checkout session created successfully');
     console.log('Session ID:', response.data.id);
-    console.log('Checkout URL:', response.data.url);
+    console.log('Checkout URL:', response.data.checkout_url);
 
     res.json({
       success: true,
-      checkoutUrl: response.data.url,
+      checkoutUrl: response.data.checkout_url, // Fixed: response field is checkout_url (not url)
       sessionId: response.data.id
     });
   } catch (error) {
@@ -602,9 +616,18 @@ app.get('/api/test/user-credits/:userId', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔑 Remove.bg API Key: ${process.env.REMOVE_BG_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
+  console.log(`� .env.local path: ${join(__dirname, '..', '.env.local')}`);
+  console.log(`�🔑 Remove.bg API Key: ${process.env.REMOVE_BG_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
   console.log(`🔑 ARK API Key: ${process.env.ARK_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
   console.log(`🔑 Creem API Key: ${process.env.CREEM_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
+
+  // 显示 Creem API Key 的前几个字符用于调试
+  if (process.env.CREEM_API_KEY) {
+    const keyPreview = process.env.CREEM_API_KEY.substring(0, 20) + '...';
+    console.log(`   → Key preview: ${keyPreview}`);
+    console.log(`   → Key length: ${process.env.CREEM_API_KEY.length} characters`);
+  }
+
   console.log(`🔑 Creem Webhook Secret: ${process.env.CREEM_WEBHOOK_SECRET ? '✓ Loaded' : '✗ Missing'}`);
   console.log(`\n🧪 TEST MODE: Use POST /api/test/grant-subscription to add credits without payment`);
 });

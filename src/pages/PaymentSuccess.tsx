@@ -7,7 +7,7 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [subscriptionInfo] = useState<any>(null);
 
   const sessionId = searchParams.get('session_id');
 
