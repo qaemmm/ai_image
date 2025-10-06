@@ -4,7 +4,6 @@ import { PRICING_PLANS, FAQ_ITEMS } from '../config/pricing';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Pricing() {
-  const [isYearly, setIsYearly] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -17,7 +16,7 @@ export default function Pricing() {
     }
 
     try {
-      const interval = isYearly ? 'year' : 'month';
+      const interval = 'month';
 
       // Call backend to create checkout session
       const response = await fetch('http://localhost:3001/api/create-checkout', {
@@ -29,6 +28,7 @@ export default function Pricing() {
           planId,
           interval,
           userId: user.id,
+          userEmail: user.email, // Add user email for Creem checkout prefill
         }),
       });
 
@@ -63,39 +63,17 @@ export default function Pricing() {
             Unlimited creativity starts here
           </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center gap-4 bg-white rounded-full p-1 shadow-md">
-            <button
-              onClick={() => setIsYearly(false)}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${
-                !isYearly
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setIsYearly(true)}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${
-                isYearly
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Yearly
-              <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
-                Save 20%
-              </span>
-            </button>
+          {/* Billing: Monthly only for now */}
+          <div className="inline-flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-md">
+            <span className="text-sm text-gray-700">Billing:</span>
+            <span className="px-3 py-1 rounded-full bg-blue-600 text-white text-sm font-medium">Monthly</span>
           </div>
         </div>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           {PRICING_PLANS.map((plan) => {
-            const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-            const originalYearlyPrice = plan.monthlyPrice * 12;
+            const price = plan.monthlyPrice;
 
             return (
               <div
@@ -120,18 +98,8 @@ export default function Pricing() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-bold text-gray-900">${price}</span>
-                      <span className="text-gray-600">/{isYearly ? 'year' : 'month'}</span>
+                      <span className="text-gray-600">/month</span>
                     </div>
-                    {isYearly && (
-                      <div className="mt-2">
-                        <span className="text-sm text-gray-500 line-through">
-                          ${originalYearlyPrice}/year
-                        </span>
-                        <span className="ml-2 text-sm font-semibold text-green-600">
-                          Save ${originalYearlyPrice - plan.yearlyPrice}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Purchase Button */}
@@ -220,11 +188,12 @@ export default function Pricing() {
           <p className="text-gray-600">
             Have more questions?{' '}
             <a
-              href="mailto:support@example.com"
+              href="mailto:a842123094@gmail.com"
               className="text-blue-600 hover:underline font-semibold"
             >
-              We're here to help
+              Contact Support
             </a>
+            {' '}or visit our <a href="/contact" className="text-blue-600 hover:underline font-semibold">Contact page</a>.
           </p>
         </div>
       </div>
