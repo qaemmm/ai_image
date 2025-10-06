@@ -5,6 +5,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { getProductId } from './creem-products.js';
 
 dotenv.config({ path: '../.env.local' });
 
@@ -168,22 +169,32 @@ app.post('/api/create-checkout', async (req, res) => {
       return res.status(400).json({ error: 'Missing planId or interval' });
     }
 
-    // TODO: Map planId and interval to Creem product IDs
-    // For now, we'll return a placeholder
-    const productId = `prod_${planId}_${interval}`;
+    // Get real product ID from configuration
+    const productId = getProductId(planId, interval);
+
+    // Build the request payload
+    const checkoutPayload = {
+      product_id: productId,
+      success_url: `${req.headers.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin}/pricing`,
+      // Note: Removed 'mode' field as it may not be supported by Creem API
+      metadata: {
+        user_id: userId,
+        plan_id: planId,
+        interval: interval
+      }
+    };
+
+    console.log('=== Creem Checkout Request ===');
+    console.log(`Plan: ${planId} ${interval}`);
+    console.log(`Product ID: ${productId}`);
+    console.log('Payload:', JSON.stringify(checkoutPayload, null, 2));
+    console.log('API Key present:', !!process.env.CREEM_API_KEY);
+    console.log('API Key prefix:', process.env.CREEM_API_KEY?.substring(0, 10) + '...');
 
     const response = await axios.post(
       'https://api.creem.io/v1/checkout/sessions',
-      {
-        product_id: productId,
-        success_url: `${req.headers.origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.origin}/pricing`,
-        metadata: {
-          user_id: userId,
-          plan_id: planId,
-          interval: interval
-        }
-      },
+      checkoutPayload,
       {
         headers: {
           'x-api-key': process.env.CREEM_API_KEY,
@@ -192,16 +203,26 @@ app.post('/api/create-checkout', async (req, res) => {
       }
     );
 
+    console.log('✅ Checkout session created successfully');
+    console.log('Session ID:', response.data.id);
+    console.log('Checkout URL:', response.data.url);
+
     res.json({
       success: true,
       checkoutUrl: response.data.url,
       sessionId: response.data.id
     });
   } catch (error) {
-    console.error('Creem Checkout Error:', error.response?.data || error.message);
+    console.error('❌ Creem Checkout Error');
+    console.error('Status:', error.response?.status);
+    console.error('Status Text:', error.response?.statusText);
+    console.error('Error Data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('Error Headers:', error.response?.headers);
+
     res.status(500).json({
       error: 'Failed to create checkout session',
-      details: error.response?.data || error.message
+      details: error.response?.data || error.message,
+      statusCode: error.response?.status
     });
   }
 });
@@ -464,6 +485,120 @@ app.post('/api/credits/add', async (req, res) => {
   }
 });
 
+// ========================================
+// 🧪 TEST MODE ENDPOINTS (Development Only)
+// ========================================
+
+// 9. Test: Add Credits and Subscription (without payment)
+app.post('/api/test/grant-subscription', async (req, res) => {
+  try {
+    const { userId, planId } = req.body;
+
+    if (!userId || !planId) {
+      return res.status(400).json({ error: 'Missing userId or planId' });
+    }
+
+    // Credit amounts for each plan
+    const creditAmounts = { basic: 150, pro: 400, max: 1000 };
+    const credits = creditAmounts[planId] || 0;
+
+    // Check if user already has credits
+    const { data: existingCredits } = await supabase
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (existingCredits) {
+      // Update existing credits
+      await supabase
+        .from('user_credits')
+        .update({
+          credits: existingCredits.credits + credits,
+          total_earned: existingCredits.total_earned + credits
+        })
+        .eq('user_id', userId);
+    } else {
+      // Create new credit record
+      await supabase.from('user_credits').insert({
+        user_id: userId,
+        credits: credits,
+        total_earned: credits,
+        total_spent: 0
+      });
+    }
+
+    // Record transaction
+    await supabase.from('credit_transactions').insert({
+      user_id: userId,
+      amount: credits,
+      type: 'purchase',
+      description: `[TEST] Granted ${planId} plan subscription`
+    });
+
+    // Create or update subscription record
+    const periodStart = new Date();
+    const periodEnd = new Date();
+    periodEnd.setMonth(periodEnd.getMonth() + 1); // 1 month subscription
+
+    await supabase.from('user_subscriptions').upsert({
+      user_id: userId,
+      subscription_id: `test_sub_${Date.now()}`,
+      product_id: `test_${planId}`,
+      plan_name: planId,
+      interval: 'month',
+      status: 'active',
+      current_period_start: periodStart.toISOString(),
+      current_period_end: periodEnd.toISOString()
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully granted ${planId} plan with ${credits} credits`,
+      credits: credits
+    });
+  } catch (error) {
+    console.error('Test Grant Error:', error);
+    res.status(500).json({ error: 'Failed to grant subscription' });
+  }
+});
+
+// 10. Test: Get User Credits Info
+app.get('/api/test/user-credits/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { data: credits } = await supabase
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const { data: subscription } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    const { data: transactions } = await supabase
+      .from('credit_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    res.json({
+      credits: credits || { credits: 0, total_earned: 0, total_spent: 0 },
+      subscription: subscription || null,
+      recentTransactions: transactions || []
+    });
+  } catch (error) {
+    console.error('Get User Credits Error:', error);
+    res.status(500).json({ error: 'Failed to fetch user credits' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -471,4 +606,5 @@ app.listen(PORT, () => {
   console.log(`🔑 ARK API Key: ${process.env.ARK_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
   console.log(`🔑 Creem API Key: ${process.env.CREEM_API_KEY ? '✓ Loaded' : '✗ Missing'}`);
   console.log(`🔑 Creem Webhook Secret: ${process.env.CREEM_WEBHOOK_SECRET ? '✓ Loaded' : '✗ Missing'}`);
+  console.log(`\n🧪 TEST MODE: Use POST /api/test/grant-subscription to add credits without payment`);
 });

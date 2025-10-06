@@ -11,6 +11,7 @@ import Pricing from './pages/Pricing';
 import Dashboard from './pages/Dashboard';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
+import TestAdmin from './pages/TestAdmin';
 
 function App() {
   return (
@@ -76,6 +77,14 @@ function App() {
             }
           />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
+          <Route
+            path="/test-admin"
+            element={
+              <ProtectedRoute>
+                <TestAdmin />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </Router>
