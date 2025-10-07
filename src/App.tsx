@@ -23,14 +23,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<Home />} />
           <Route
             path="/compress"
             element={
@@ -83,7 +76,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/payment/cancel" element={<PaymentCancel />} />
+          <Route
+            path="/payment/cancel"
+            element={
+              <ProtectedRoute>
+                <PaymentCancel />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/test-admin"
             element={
