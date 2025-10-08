@@ -204,7 +204,10 @@ app.post('/api/create-checkout', async (req, res) => {
     console.log(`Product ID: ${productId}`);
     console.log('Payload:', JSON.stringify(checkoutPayload, null, 2));
     console.log('API Key present:', !!process.env.CREEM_API_KEY);
-    console.log('API Key full:', process.env.CREEM_API_KEY);
+    if (process.env.CREEM_API_KEY) {
+      const keyPreview = process.env.CREEM_API_KEY.substring(0, 6) + '...' + process.env.CREEM_API_KEY.slice(-4);
+      console.log('API Key preview:', keyPreview);
+    }
 
     const response = await axios.post(
       'https://api.creem.io/v1/checkouts', // Fixed: correct endpoint is /v1/checkouts (not /v1/checkout/sessions)
